@@ -66,12 +66,12 @@ pub enum CheckOption<'a> {
 /// The HOTP is a HMAC-based one-time password algorithm.
 ///
 /// It takes one parameter, the shared secret between client and server.
-pub struct Hotp<'a> {
-    secret: &'a str,
+pub struct Hotp {
+    secret: Vec<u8>,
 }
 
-impl<'a> Hotp<'a> {
-    pub const fn new(secret: &'a str) -> Self {
+impl Hotp {
+    pub const fn new(secret: Vec<u8>) -> Self {
         Self { secret }
     }
 
@@ -83,7 +83,7 @@ impl<'a> Hotp<'a> {
     ```
     use ootp::hotp::{Hotp, MakeOption};
 
-    let hotp = Hotp::new("A strong shared secret");
+    let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
     let code = hotp.make(MakeOption::Default);
     ```
 
@@ -91,7 +91,7 @@ impl<'a> Hotp<'a> {
 
     ```
     use ootp::hotp::{Hotp, MakeOption};
-    let hotp = Hotp::new("A strong shared secret");
+    let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
     let code = hotp.make(MakeOption::Digits(8));
     ```
 
@@ -100,41 +100,32 @@ impl<'a> Hotp<'a> {
     ```
     use ootp::hotp::{Hotp, MakeOption};
     use ootp::hmacsha::ShaTypes;
-    let hotp = Hotp::new("A strong shared secret");
+    let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
     let code = hotp.make(MakeOption::Algorithm(&ShaTypes::Sha2_256));
     ```
     */
     pub fn make(&self, options: MakeOption) -> String {
         match options {
             MakeOption::Default => make_opt(
-                self.secret().as_bytes(),
+                &self.secret(),
                 DEFAULT_DIGITS,
                 DEFAULT_COUNTER,
                 DEFAULT_ALGORITHM,
             ),
-            MakeOption::Counter(counter) => make_opt(
-                self.secret().as_bytes(),
-                DEFAULT_DIGITS,
-                counter,
-                DEFAULT_ALGORITHM,
-            ),
-            MakeOption::Digits(digits) => make_opt(
-                self.secret().as_bytes(),
-                digits,
-                DEFAULT_COUNTER,
-                DEFAULT_ALGORITHM,
-            ),
+            MakeOption::Counter(counter) => {
+                make_opt(&self.secret(), DEFAULT_DIGITS, counter, DEFAULT_ALGORITHM)
+            }
+            MakeOption::Digits(digits) => {
+                make_opt(&self.secret(), digits, DEFAULT_COUNTER, DEFAULT_ALGORITHM)
+            }
             MakeOption::Full {
                 counter,
                 digits,
                 algorithm,
-            } => make_opt(self.secret().as_bytes(), digits, counter, algorithm),
-            MakeOption::Algorithm(algorithm) => make_opt(
-                self.secret().as_bytes(),
-                DEFAULT_DIGITS,
-                DEFAULT_COUNTER,
-                algorithm,
-            ),
+            } => make_opt(&self.secret(), digits, counter, algorithm),
+            MakeOption::Algorithm(algorithm) => {
+                make_opt(&self.secret(), DEFAULT_DIGITS, DEFAULT_COUNTER, algorithm)
+            }
         }
     }
     /**
@@ -145,7 +136,7 @@ impl<'a> Hotp<'a> {
     ```
     use ootp::hotp::{Hotp, MakeOption, CheckOption};
 
-    let hotp = Hotp::new("A strong shared secret");
+    let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
     let code = hotp.make(MakeOption::Default);
     let check = hotp.check(code.as_str(), CheckOption::Default);
     ```
@@ -154,7 +145,7 @@ impl<'a> Hotp<'a> {
 
     ```
     use ootp::hotp::{Hotp, MakeOption, CheckOption};
-    let hotp = Hotp::new("A strong shared secret");
+    let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
     let code = hotp.make(MakeOption::Counter(2));
     let check = hotp.check(code.as_str(), CheckOption::Counter(2));
     ```
@@ -186,8 +177,8 @@ impl<'a> Hotp<'a> {
     }
 
     /// Get a reference to the hotp's  secret.
-    pub const fn secret(&self) -> &&'a str {
-        &self.secret
+    pub fn secret(&self) -> Vec<u8> {
+        self.secret.clone()
     }
 }
 
@@ -200,7 +191,7 @@ mod tests {
 
     #[test]
     fn make_test() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code1 = hotp.make(MakeOption::Default);
         let code2 = hotp.make(MakeOption::Default);
         assert_eq!(code1, code2);
@@ -208,7 +199,7 @@ mod tests {
 
     #[test]
     fn make_test_sha2() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code1 = hotp.make(MakeOption::Algorithm(&ShaTypes::Sha2_256));
         let code2 = hotp.make(MakeOption::Algorithm(&ShaTypes::Sha2_256));
         assert_eq!(code1, code2);
@@ -218,8 +209,8 @@ mod tests {
     fn make_test_correcteness() {
         use hex;
 
-        let secret = "12345678901234567890";
-        let hotp = Hotp::new(secret);
+        let secret = "12345678901234567890".as_bytes().to_vec();
+        let hotp = Hotp::new(secret.clone());
         let hex_string = hex::encode(secret);
         assert_eq!(
             format!("0x{}", hex_string),
@@ -249,7 +240,7 @@ mod tests {
 
     #[test]
     fn check_test() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code = hotp.make(MakeOption::Default);
         let check = hotp.check(code.as_str(), CheckOption::Default);
         assert!(check);
@@ -257,7 +248,7 @@ mod tests {
 
     #[test]
     fn check_test_sha2() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code = hotp.make(MakeOption::Algorithm(&ShaTypes::Sha2_256));
         let check = hotp.check(code.as_str(), CheckOption::Algorithm(&ShaTypes::Sha2_256));
         assert!(check);
@@ -265,7 +256,7 @@ mod tests {
 
     #[test]
     fn check_test_counter() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code = hotp.make(MakeOption::Counter(42));
         let check = hotp.check(code.as_str(), CheckOption::Counter(42));
         assert!(check);
@@ -273,7 +264,7 @@ mod tests {
 
     #[test]
     fn check_test_breadth() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code = hotp.make(MakeOption::Counter(42));
         let check = hotp.check(
             code.as_str(),
@@ -288,7 +279,7 @@ mod tests {
 
     #[test]
     fn check_test_counter_and_breadth() {
-        let hotp = Hotp::new("A strong shared secret");
+        let hotp = Hotp::new("A strong shared secret".as_bytes().to_vec());
         let code = hotp.make(MakeOption::Counter(42));
         let check = hotp.check(
             code.as_str(),

@@ -26,10 +26,9 @@ mod tests {
         use base32;
 
         let encoded_secret = "MU2TSNRZG5TGKMBYGAZDCMJTMM3GIMJVMZRTINDFGI3WGZRVMQ4Q"; // The secret key is a base32 encoded string
-        let secret_vec =
+        let secret =
             base32::decode(base32::Alphabet::RFC4648 { padding: false }, encoded_secret).unwrap();
-        let secret = String::from_utf8(secret_vec).unwrap();
-        let totp = Totp::secret(&secret, CreateOption::Default);
+        let totp = Totp::secret(secret, CreateOption::Default);
 
         let otp_auth_uri = "otpauth://totp/{issuer}:{account}?secret={secret}&issuer={issuer}&period={period}&digits={digits}"
             .replace("{issuer}", "OOTP")
@@ -49,7 +48,7 @@ mod tests {
 
     #[test]
     fn rust_readme_example() {
-        let secret = "Base32 decoded secret";
+        let secret = "Base32 decoded secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
         let otp = totp.make(); // Generate a one-time password
         println!("{}", otp); // Print the one-time password

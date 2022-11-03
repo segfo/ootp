@@ -15,7 +15,7 @@ fn create_counter(period: u64) -> u64 {
 ///
 /// It takes four parameter. An `Hotp` istance, the desired number of digits, a time period and the SHA algorithm.
 pub struct Totp<'a> {
-    pub hotp: Hotp<'a>,
+    pub hotp: Hotp,
     pub digits: u32,
     pub period: u64,
     pub algorithm: &'a ShaTypes,
@@ -41,7 +41,7 @@ pub enum CreateOption<'a> {
 
 impl<'a> Totp<'a> {
     /// TOTP instance "private" constructor
-    const fn new(hotp: Hotp<'a>, digits: u32, period: u64, algorithm: &'a ShaTypes) -> Self {
+    const fn new(hotp: Hotp, digits: u32, period: u64, algorithm: &'a ShaTypes) -> Self {
         Self {
             hotp,
             digits,
@@ -51,7 +51,7 @@ impl<'a> Totp<'a> {
     }
 
     /// TOTP instance constructor
-    pub const fn secret(secret: &'a str, option: CreateOption<'a>) -> Totp<'a> {
+    pub const fn secret(secret: Vec<u8>, option: CreateOption<'a>) -> Totp<'a> {
         let hotp = Hotp::new(secret);
         let (digits, period, algorithm) = match option {
             CreateOption::Default => (DEFAULT_DIGITS, DEFAULT_PERIOD, DEFAULT_ALGORITHM),
@@ -74,7 +74,7 @@ impl<'a> Totp<'a> {
     ```rust
     use ootp::totp::{Totp, CreateOption};
 
-    let secret = "A strong shared secrett";
+    let secret = "A strong shared secrett".as_bytes().to_vec();
     let totp = Totp::secret(
         secret,
         CreateOption::Default
@@ -102,7 +102,7 @@ impl<'a> Totp<'a> {
     ```rust
     use ootp::totp::{Totp, CreateOption};
 
-    let secret = "A strong shared secrett";
+    let secret = "A strong shared secrett".as_bytes().to_vec();
     let totp = Totp::secret(
         secret,
         CreateOption::Default
@@ -128,7 +128,7 @@ impl<'a> Totp<'a> {
     ```
     use ootp::totp::{Totp, CreateOption};
 
-    let secret = "A strong shared secret";
+    let secret = "A strong shared secret".as_bytes().to_vec();
     let totp = Totp::secret(
         secret,
         CreateOption::Default
@@ -142,7 +142,7 @@ impl<'a> Totp<'a> {
     ```
     use ootp::totp::{Totp, CreateOption};
 
-    let secret = "A strong shared secret";
+    let secret = "A strong shared secret".as_bytes().to_vec();
     let totp = Totp::secret(
         secret,
         CreateOption::Digits(8)
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let secret = "A strong shared secret";
+        let secret = "A strong shared secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
         let code = totp.make();
         assert_eq!(code.len(), DEFAULT_DIGITS as usize);
@@ -179,7 +179,7 @@ mod tests {
     /// Taken from [RFC 6238](https://datatracker.ietf.org/doc/html/rfc6238#appendix-B)
     #[test]
     fn make_test_correcteness() {
-        let secret = "12345678901234567890";
+        let secret = "12345678901234567890".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Digits(8));
         let code = totp.make_time(59);
         assert_eq!(code, "94287082");
@@ -199,7 +199,7 @@ mod tests {
     /// Errata for [RFC 6238]](https://www.rfc-editor.org/errata_search.php?rfc=6238&rec_status=0)
     #[test]
     fn make_test_correcteness_sha256() {
-        let secret = "12345678901234567890123456789012";
+        let secret = "12345678901234567890123456789012".as_bytes().to_vec();
         let totp = Totp::secret(
             secret,
             CreateOption::Full {
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn check_test() {
-        let secret = "A strong shared secret";
+        let secret = "A strong shared secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
         let code = totp.make();
         assert!(totp.check(code.as_str(), None))
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn rapid_make_test() {
-        let secret = "A strong shared secret";
+        let secret = "A strong shared secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
         let code1 = totp.make();
         let code2 = totp.make();
