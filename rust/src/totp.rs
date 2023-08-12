@@ -80,15 +80,20 @@ impl<'a> Totp<'a> {
         CreateOption::Default
     );
 
-    let otp = totp.make(); // Generate a one-time password
+    let otp = totp.make(0); // Generate a one-time password
     println!("{}", otp); // Print the one-time password
     ```
 
     */
 
-    pub fn make(&self) -> String {
+    /**
+     * steps_drift: 時間ステップのドリフト値を指定する。
+     *  steps_drift*self.digits秒単位でタイムステップがズレた状態のカウンタを生成する。
+     *  0であればドリフトなし。
+     */
+    pub fn make(&self,steps_drift:i64) -> String {
         self.hotp.make(MakeOption::Full {
-            counter: create_counter(self.period),
+            counter: create_counter(self.period)+30*steps_drift,
             digits: self.digits,
             algorithm: self.algorithm,
         })
@@ -133,7 +138,7 @@ impl<'a> Totp<'a> {
         secret,
         CreateOption::Default
     );
-    let otp = totp.make(); // Generate a one-time password
+    let otp = totp.make(0); // Generate a one-time password
     let check = totp.check(otp.as_str(), None);
     ```
 
@@ -147,7 +152,7 @@ impl<'a> Totp<'a> {
         secret,
         CreateOption::Digits(8)
     );
-    let otp = totp.make(); // Generate a one-time password
+    let otp = totp.make(0); // Generate a one-time password
     let check = totp.check(otp.as_str(), Some(42));
     ```
     */
@@ -172,7 +177,7 @@ mod tests {
     fn it_works() {
         let secret = "A strong shared secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
-        let code = totp.make();
+        let code = totp.make(0);
         assert_eq!(code.len(), DEFAULT_DIGITS as usize);
     }
 
@@ -226,7 +231,7 @@ mod tests {
     fn check_test() {
         let secret = "A strong shared secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
-        let code = totp.make();
+        let code = totp.make(0);
         assert!(totp.check(code.as_str(), None))
     }
 
@@ -234,8 +239,8 @@ mod tests {
     fn rapid_make_test() {
         let secret = "A strong shared secret".as_bytes().to_vec();
         let totp = Totp::secret(secret, CreateOption::Default);
-        let code1 = totp.make();
-        let code2 = totp.make();
+        let code1 = totp.make(0);
+        let code2 = totp.make(0);
         assert!(totp.check(code1.as_str(), None));
         assert!(totp.check(code2.as_str(), None));
         assert_eq!(code1, code2);
