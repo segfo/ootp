@@ -3,12 +3,14 @@ use crate::hotp::{CheckOption, Hotp, MakeOption};
 use hmacsha::ShaTypes;
 use std::time::SystemTime;
 
-fn create_counter(period: u64) -> u64 {
+fn get_unix_epoch() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs()
-        / period
+}
+fn create_counter(period: u64) -> u64 {
+    get_unix_epoch() / period
 }
 
 /// The TOTP is a HOTP-based one-time password algorithm, with a time value as moving factor.
@@ -91,9 +93,9 @@ impl<'a> Totp<'a> {
      *  steps_drift*self.digits秒単位でタイムステップがズレた状態のカウンタを生成する。
      *  0であればドリフトなし。
      */
-    pub fn make(&self,steps_drift:i64) -> String {
+    pub fn make(&self) -> String {
         self.hotp.make(MakeOption::Full {
-            counter: create_counter(self.period)+30*steps_drift,
+            counter: create_counter(self.period),
             digits: self.digits,
             algorithm: self.algorithm,
         })
@@ -125,6 +127,17 @@ impl<'a> Totp<'a> {
             algorithm: self.algorithm,
         })
     }
+    /**
+     * steps_drift: 時間ステップのドリフト値を指定する。
+     *  steps_drift*self.digits秒単位でタイムステップがズレた状態のカウンタを生成する。
+     *  0であればドリフトなし。
+     */
+    pub fn make_drift(&self, steps_drift: i64) -> String {
+        self.make_time(
+            (get_unix_epoch() as i128 + (self.period as i128 * steps_drift as i128)) as u64,
+        )
+    }
+
     /**
     Returns a boolean indicating if the one-time password is valid.
 
